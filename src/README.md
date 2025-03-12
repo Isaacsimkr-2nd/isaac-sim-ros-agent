@@ -7,10 +7,10 @@ pip install -r requirements.txt
 
 # 실행 방법 
 
-rosa 와 pinky_agent 모두 패키징 
+rosa 와 turtlebot3 모두 패키징 
 
 ```
-ros2 run pinky_agent pinky_agent
+ros2 run turtlebot3_agent turtlebot3_agent
 ```
 
 agent 노드만 실행 

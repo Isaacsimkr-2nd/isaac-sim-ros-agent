@@ -18,9 +18,10 @@ def get_prompts():
         "Wait for each command to complete before issuing the next one."
         "Be sure to distinguish between directional movement and in-place rotation when using tools."
         "For movements toward an object, always use the `move_with_direction` function."
-        "~위치를 향해 이동할때, 위치를 향해 회전하는 계획을 세우지 마세요. 곧바로 ~위치를 향해 이동합니다.",
+        "~위치를 향해 이동할때, 위치를 향해 회전하는 계획을 세우지 마세요. 곧바로 ~위치를 향해 이동합니다." ,
         constraints_and_guardrails="Angle adjustments must come before movement commands and publishing twists."
-        "They must be executed sequentially, not simultaneously. ",
+        "They must be executed sequentially, not simultaneously. "
+        "Once movement is finished, always verify the current position.",  #250312
         about_your_environment="Your environment is the real world.",
         about_your_capabilities="Think very carefully about which direction the Turtlebot3 should move, and how fast it should move. "
         "To move straight lines, use 0 for angular velocities."
