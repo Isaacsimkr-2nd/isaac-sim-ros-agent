@@ -10,7 +10,12 @@ from ultralytics import YOLO
 from nav_msgs.msg import Odometry
 import math
 
+# 커스텀 메시지: yolo_perception/msg/DetectionArray, DetectionInfo
+from yolo_perception.msg import DetectionArray, DetectionInfo
+
+
 import cv2 
+
 class TurtleBot3Agent(Node):
     def __init__(self):
         super().__init__('turtlebot3_agent_tools')
@@ -26,12 +31,23 @@ class TurtleBot3Agent(Node):
         self.angular = 0.0
         self.current_position = (0.0, 0.0, 0.0)  # (x, y, yaw)
 
+        # YOLO 감지 관련
+        self.detection_result = []
+        self.yolo_received = False  # 한 번만 감지 결과를 저장하기 위한 플래그
 
         # 주기적으로 이동 상태 확인 (0.1초마다 실행)
         self.timer = self.create_timer(0.1, self.timer_callback)
 
         # odometry 추가
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+
+        # 1) DetectionArray를 구독하여 한 번만 감지 결과를 저장
+        self.yolo_sub = self.create_subscription(
+            DetectionArray,
+            '/detection_results',     # 사용자가 원하는 토픽 이름
+            self.yolo_callback,
+            10
+        )
 
     def timer_callback(self):
         """
@@ -43,7 +59,7 @@ class TurtleBot3Agent(Node):
 
             if elapsed < self.duration:
                 twist_msg = Twist()
-                twist_msg.linear.x = -self.linear
+                twist_msg.linear.x = self.linear
                 twist_msg.angular.z = self.angular
                 self.cmd_vel_pub.publish(twist_msg)
             else:
@@ -69,10 +85,8 @@ class TurtleBot3Agent(Node):
         return f"turtlebot3 이동 명령: velocity={velocity}, angle={angle}, duration={duration}s."
 
     def stop_turtlebot3(self) -> str:
-
         self.move_flag = False
         self.stop_movement()
-
         return "turtlebot3 즉시 정지 명령 실행됨."
 
     def odom_callback(self, msg):
@@ -89,6 +103,17 @@ class TurtleBot3Agent(Node):
         qw = msg.pose.pose.orientation.w
         yaw = math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy**2 + qz**2))
         self.current_position = (x, y, yaw)
+
+    def yolo_callback(self, msg):
+        """
+        YOLO 감지 결과 콜백 함수
+        - 한 번만(self.yolo_received == False 일 때만) 감지 결과를 저장
+        """
+        if not self.yolo_received:
+            self.get_logger().info(f"감지된 객체 수: {msg.count}")
+            self.detection_result = msg.detections  # DetectionInfo[] 형태
+            self.yolo_received = True
+
 
 # 글로벌 인스턴스를 관리하여 LangChain과 연결
 turtlebot3_agent = None
@@ -160,7 +185,6 @@ def move_with_direction(velocity: float, angle: float, duration: float = 1.0) ->
     odom = agent.current_position
     return f"{pub_cmd} 현재 위치: x={odom[0]:.2f}m, y={odom[1]:.2f}m, yaw={odom[2]:.2f}rad"
 
-
 @tool
 def stop_turtlebot3() -> str:
     """
@@ -179,66 +203,34 @@ def get_turtlebot3_position() -> str:
     x, y, yaw = agent.current_position
     return f"현재 위치: x={x:.2f}m, y={y:.2f}m, yaw={yaw:.2f}rad"
 
-yolo_model = YOLO('/home/turtlebot3/yolo/yolo11n.pt')
-
 @tool 
 def yolo_tool():
     """
     카메라 피드를 기반으로 객체를 감지합니다.
     전방에 무엇이 보이는지 확인하고 싶을 때 해당 도구를 사용하세요.
     """
-    cap = cv2.VideoCapture(0)
-    for _ in range(5):
-        cap.grab()
-    ret, frame = cap.read()
-    
-    if not ret:
-        return [{"error": "카메라에서 프레임을 읽지 못했습니다."}]
-    # 좌우 반전 
-    frame = cv2.flip(frame, 1)
-    results = yolo_model(source=frame, conf=0.4, verbose=False)
-    info = {}
-    # 화면 정보 저장
-    screen_width = frame.shape[1] 
-    screen_height = frame.shape[0]  
-    screen_center_x = screen_width // 2  
-    screen_center_y = screen_height // 2 
-    
-    # 화면을 5등분하는 기준
-    left_boundary = screen_width // 3        # 1/3 지점 (왼쪽과 중앙 경계)
-    right_boundary = (screen_width // 3) * 2 # 2/3 지점 (중앙과 오른쪽 경계)
-    # -> 3/5 지점은 중앙 
-    info['screen_info'] = {
-        'screen_size': screen_width*screen_width,
-        'screen_center': [screen_center_x, screen_center_y]
-    }
-    for result in results:
-        for box in result.boxes:
-            cls = int(box.cls[0].item())
-            label = yolo_model.names[cls]
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            x, y, w, h = map(int, box.xywh[0])
-            confidence = round(box.conf[0].item(), 2)
-            
-            if x < left_boundary:
-                position = f"left:{abs(screen_center_x-x)}"
-            elif x < right_boundary:
-                position = "center"
-            else:
-                position = f"right:{abs(screen_center_x-x)}"
-                
-            info[label] = {
-                'location': [x, y],
-                'size': w * h,
-                # 'bbox': [x1, y1, x2, y2],
-                # 'confidence': confidence,
-                'position': position,
-            }
-            
-    save_path = "./detections.jpg"  # 저장할 이미지 경로
-    cv2.imwrite(save_path, frame)
-    cap.release()  
-    return [info]
+    # 여기서는 실제로 카메라를 사용하지 않고,
+    # 이미 구독된 DetectionArray (agent.detection_result)만 반환한다고 가정.
+    # (yolo_callback에서 한 번만 저장)
+    agent = get_turtlebot3_agent()
+
+    if not agent.yolo_received:
+        return [{"error": "YOLO 감지가 아직 실행되지 않았거나 결과가 없습니다."}]
+
+    # DetectionInfo[] 구조를 그대로 반환, 필요하다면 가공 가능
+    results = []
+    for detection in agent.detection_result:
+        # detection: DetectionInfo
+        data = {
+            "label": detection.label,
+            "confidence": detection.confidence,
+            "bounding_box": list(detection.bounding_box),  # int32[] -> Python list
+            "width": detection.width,
+            "height": detection.height
+        }
+        results.append(data)
+
+    return results
 
 
 @tool
@@ -251,11 +243,10 @@ def find_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
     무엇을 찾기 위해 사용됩니다.
     객체 위치를 참고하여 angle을 정하고 얼마나 이동할지 정하세요.
     """
-    agent = get_turtlebot3_agent() 
+    agent = get_turtlebot3_agent()
     detection_result = yolo_tool.invoke({})
-    
-    return agent.publish_twist_to_cmd_vel(velocity, angle, duration)
 
+    return agent.publish_twist_to_cmd_vel(velocity, angle, duration)
 
 
 # ROS 2 노드를 실행하는 메인 함수
