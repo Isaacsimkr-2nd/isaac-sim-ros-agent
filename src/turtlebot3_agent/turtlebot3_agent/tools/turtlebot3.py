@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from langchain.agents import tool
-# from ultralytics import YOLO
+from ultralytics import YOLO
 
 # odometry 추가
 from nav_msgs.msg import Odometry
@@ -179,82 +179,82 @@ def get_turtlebot3_position() -> str:
     x, y, yaw = agent.current_position
     return f"현재 위치: x={x:.2f}m, y={y:.2f}m, yaw={yaw:.2f}rad"
 
-# yolo_model = YOLO('/home/turtlebot3/yolo/yolo11n.pt')
+yolo_model = YOLO('/home/turtlebot3/yolo/yolo11n.pt')
 
-# @tool 
-# def yolo_tool():
-#     """
-#     카메라 피드를 기반으로 객체를 감지합니다.
-#     전방에 무엇이 보이는지 확인하고 싶을 때 해당 도구를 사용하세요.
-#     """
-#     cap = cv2.VideoCapture(0)
-#     for _ in range(5):
-#         cap.grab()
-#     ret, frame = cap.read()
+@tool 
+def yolo_tool():
+    """
+    카메라 피드를 기반으로 객체를 감지합니다.
+    전방에 무엇이 보이는지 확인하고 싶을 때 해당 도구를 사용하세요.
+    """
+    cap = cv2.VideoCapture(0)
+    for _ in range(5):
+        cap.grab()
+    ret, frame = cap.read()
     
-#     if not ret:
-#         return [{"error": "카메라에서 프레임을 읽지 못했습니다."}]
-#     # 좌우 반전 
-#     frame = cv2.flip(frame, 1)
-#     results = yolo_model(source=frame, conf=0.4, verbose=False)
-#     info = {}
-#     # 화면 정보 저장
-#     screen_width = frame.shape[1] 
-#     screen_height = frame.shape[0]  
-#     screen_center_x = screen_width // 2  
-#     screen_center_y = screen_height // 2 
+    if not ret:
+        return [{"error": "카메라에서 프레임을 읽지 못했습니다."}]
+    # 좌우 반전 
+    frame = cv2.flip(frame, 1)
+    results = yolo_model(source=frame, conf=0.4, verbose=False)
+    info = {}
+    # 화면 정보 저장
+    screen_width = frame.shape[1] 
+    screen_height = frame.shape[0]  
+    screen_center_x = screen_width // 2  
+    screen_center_y = screen_height // 2 
     
-#     # 화면을 5등분하는 기준
-#     left_boundary = screen_width // 3        # 1/3 지점 (왼쪽과 중앙 경계)
-#     right_boundary = (screen_width // 3) * 2 # 2/3 지점 (중앙과 오른쪽 경계)
-#     # -> 3/5 지점은 중앙 
-#     info['screen_info'] = {
-#         'screen_size': screen_width*screen_width,
-#         'screen_center': [screen_center_x, screen_center_y]
-#     }
-#     for result in results:
-#         for box in result.boxes:
-#             cls = int(box.cls[0].item())
-#             label = yolo_model.names[cls]
-#             x1, y1, x2, y2 = map(int, box.xyxy[0])
-#             x, y, w, h = map(int, box.xywh[0])
-#             confidence = round(box.conf[0].item(), 2)
+    # 화면을 5등분하는 기준
+    left_boundary = screen_width // 3        # 1/3 지점 (왼쪽과 중앙 경계)
+    right_boundary = (screen_width // 3) * 2 # 2/3 지점 (중앙과 오른쪽 경계)
+    # -> 3/5 지점은 중앙 
+    info['screen_info'] = {
+        'screen_size': screen_width*screen_width,
+        'screen_center': [screen_center_x, screen_center_y]
+    }
+    for result in results:
+        for box in result.boxes:
+            cls = int(box.cls[0].item())
+            label = yolo_model.names[cls]
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            x, y, w, h = map(int, box.xywh[0])
+            confidence = round(box.conf[0].item(), 2)
             
-#             if x < left_boundary:
-#                 position = f"left:{abs(screen_center_x-x)}"
-#             elif x < right_boundary:
-#                 position = "center"
-#             else:
-#                 position = f"right:{abs(screen_center_x-x)}"
+            if x < left_boundary:
+                position = f"left:{abs(screen_center_x-x)}"
+            elif x < right_boundary:
+                position = "center"
+            else:
+                position = f"right:{abs(screen_center_x-x)}"
                 
-#             info[label] = {
-#                 'location': [x, y],
-#                 'size': w * h,
-#                 # 'bbox': [x1, y1, x2, y2],
-#                 # 'confidence': confidence,
-#                 'position': position,
-#             }
+            info[label] = {
+                'location': [x, y],
+                'size': w * h,
+                # 'bbox': [x1, y1, x2, y2],
+                # 'confidence': confidence,
+                'position': position,
+            }
             
-#     save_path = "./detections.jpg"  # 저장할 이미지 경로
-#     cv2.imwrite(save_path, frame)
-#     cap.release()  
-#     return [info]
+    save_path = "./detections.jpg"  # 저장할 이미지 경로
+    cv2.imwrite(save_path, frame)
+    cap.release()  
+    return [info]
 
 
-# @tool
-# def find_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
-#     """
-#     [툴 함수] turtlebot3의 /cmd_vel 토픽에 Twist 메시지를 발행하여 움직입니다. 
-#     객체를 찾기 위해 turtlebot3는 움직입니다. 
-#     객체를 찾기 위해 제자리 회전하기도 하고 방향성 있는 이동을 하기도 합니다.  
-#     선속도 velocity와 각속도 angle를 통해 주변을 살피고 yolo_tool을 사용하여 객체를 찾습니다.
-#     무엇을 찾기 위해 사용됩니다.
-#     객체 위치를 참고하여 angle을 정하고 얼마나 이동할지 정하세요.
-#     """
-#     agent = get_turtlebot3_agent() 
-#     detection_result = yolo_tool.invoke({})
+@tool
+def find_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
+    """
+    [툴 함수] turtlebot3의 /cmd_vel 토픽에 Twist 메시지를 발행하여 움직입니다. 
+    객체를 찾기 위해 turtlebot3는 움직입니다. 
+    객체를 찾기 위해 제자리 회전하기도 하고 방향성 있는 이동을 하기도 합니다.  
+    선속도 velocity와 각속도 angle를 통해 주변을 살피고 yolo_tool을 사용하여 객체를 찾습니다.
+    무엇을 찾기 위해 사용됩니다.
+    객체 위치를 참고하여 angle을 정하고 얼마나 이동할지 정하세요.
+    """
+    agent = get_turtlebot3_agent() 
+    detection_result = yolo_tool.invoke({})
     
-#     return agent.publish_twist_to_cmd_vel(velocity, angle, duration)
+    return agent.publish_twist_to_cmd_vel(velocity, angle, duration)
 
 
 

@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.0.0] - 2025-03-12
+### 2025-03-12
 ### 변경 사항
 
 #### 이동 후 항상 위치 정보 확인
@@ -13,3 +13,10 @@
 
 #### 기타
 - `src/README.md`에서 로봇명 'turtlebot3' 수정
+
+### 2025-03-13
+### 변경 사항
+
+#### YOLO for ROS2 추가
+- `src/yolo_percepriton/` : custom msg 패키지
+- `src/yolov11_ros/` : YOLO + ROS2 패키지
