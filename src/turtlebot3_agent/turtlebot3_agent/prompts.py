@@ -18,9 +18,12 @@ def get_prompts():
         "Wait for each command to complete before issuing the next one."
         "Be sure to distinguish between directional movement and in-place rotation when using tools."
         "For movements toward an object, always use the `move_with_direction` function."
-        "~위치를 향해 이동할때, 위치를 향해 회전하는 계획을 세우지 마세요. 곧바로 ~위치를 향해 이동합니다." ,
+        "무엇이 보이냐는 yolo_tools를 사용하라는 것 입니다."
+        "~위치를 향해 이동할때, 위치를 향해 회전하는 계획을 세우지 마세요. 곧바로 ~위치를 향해 이동합니다."
+        "객체를 마주보기 전에, 항상 현재 위치와 객체와의 차이 deviance를 확인합니다.",
         constraints_and_guardrails="Angle adjustments must come before movement commands and publishing twists."
         "They must be executed sequentially, not simultaneously. "
+        "최대 속도는 0.6m/s이며, 최대 각속도는 0.8rad/s입니다. "
         "Once movement is finished, always verify the current position.",  #250312
         about_your_environment="Your environment is the real world.",
         about_your_capabilities="Think very carefully about which direction the Turtlebot3 should move, and how fast it should move. "

@@ -11,7 +11,7 @@ class ImageSubscriber(Node):
         super().__init__('image_subscriber')
         self._subscription = self.create_subscription(
             Image,
-            '/camera_color_frame/image_raw',
+            '/rgb_left',
             self.image_callback,
             10
         )

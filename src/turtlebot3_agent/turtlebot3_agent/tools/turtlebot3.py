@@ -109,10 +109,10 @@ class TurtleBot3Agent(Node):
         YOLO 감지 결과 콜백 함수
         - 한 번만(self.yolo_received == False 일 때만) 감지 결과를 저장
         """
-        if not self.yolo_received:
-            self.get_logger().info(f"감지된 객체 수: {msg.count}")
-            self.detection_result = msg.detections  # DetectionInfo[] 형태
-            self.yolo_received = True
+        # if not self.yolo_received:
+        # self.get_logger().info(f"감지된 객체 수: {msg.count}")
+        self.detection_result = msg.detections  # DetectionInfo[] 형태
+        self.yolo_received = True
 
 
 # 글로벌 인스턴스를 관리하여 LangChain과 연결
@@ -208,10 +208,10 @@ def yolo_tool():
     """
     카메라 피드를 기반으로 객체를 감지합니다.
     전방에 무엇이 보이는지 확인하고 싶을 때 해당 도구를 사용하세요.
+    deviance는 사람과 로봇과의 상대적인 yaw 값 입니다 (절대적인 rad또는 degree 값이 아닙니다).
     """
     # 여기서는 실제로 카메라를 사용하지 않고,
     # 이미 구독된 DetectionArray (agent.detection_result)만 반환한다고 가정.
-    # (yolo_callback에서 한 번만 저장)
     agent = get_turtlebot3_agent()
 
     if not agent.yolo_received:
@@ -220,13 +220,16 @@ def yolo_tool():
     # DetectionInfo[] 구조를 그대로 반환, 필요하다면 가공 가능
     results = []
     for detection in agent.detection_result:
+
         # detection: DetectionInfo
         data = {
             "label": detection.label,
             "confidence": detection.confidence,
             "bounding_box": list(detection.bounding_box),  # int32[] -> Python list
             "width": detection.width,
-            "height": detection.height
+            "height": detection.height,
+            "center_x":(list(detection.bounding_box)[0] + list(detection.bounding_box)[2]) / 2,
+            "deviance" : 640 - (list(detection.bounding_box)[0] + list(detection.bounding_box)[2]) / 2
         }
         results.append(data)
 
@@ -241,13 +244,29 @@ def find_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
     객체를 찾기 위해 제자리 회전하기도 하고 방향성 있는 이동을 하기도 합니다.  
     선속도 velocity와 각속도 angle를 통해 주변을 살피고 yolo_tool을 사용하여 객체를 찾습니다.
     무엇을 찾기 위해 사용됩니다.
-    객체 위치를 참고하여 angle을 정하고 얼마나 이동할지 정하세요.
+    deviance 의 값을 기준으로 양수이면 cmd_vel의 angle 양수
+    deviance 의 값을 기준으로 cmd_vel의 angle 음수 .
     """
     agent = get_turtlebot3_agent()
     detection_result = yolo_tool.invoke({})
 
     return agent.publish_twist_to_cmd_vel(velocity, angle, duration)
 
+@tool
+def face_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
+    """
+    [툴 함수] turtlebot3의 /cmd_vel 토픽에 Twist 메시지를 발행하여 움직입니다. 
+    객체를 마주보기 위하여 turtlebot3는 제자리 회전합니다. 
+    rotate_in_place를 사용하여 각속도 angle을 설정합니다.
+    객체의 정면을 마주보기 위하여 사용됩니다.
+    deviance 의 값을 기준으로 양수이면 angle의 값은 -30 degrees, deviance 의 값이 음수이면 cmd_vel의 +30 degrees 입니다.
+    """
+    agent = get_turtlebot3_agent()
+    detection_result = yolo_tool.invoke({})
+    return_twist = agent.publish_twist_to_cmd_vel(velocity, angle, duration)
+    return_detection = detection_result
+    
+    return return_twist+return_detection
 
 # ROS 2 노드를 실행하는 메인 함수
 def main(args=None):
