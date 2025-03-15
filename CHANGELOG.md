@@ -24,3 +24,18 @@
     - Subscribe to /detection_results (DetectionArray)
     - Parse the detection info (label, confidence, bounding_box etc.)
     - Provide a yolo_tool() function
+
+### 2025-03-15
+### 변경 사항
+
+#### ROS2 Executable (YOLO) 추가
+- `ros2 run yolov11_ros yolov11_ros_viewer` : viewer
+- `ros2 run yolov11_ros yolov11_msg_publisher` : detection msg publisher
+
+#### turtlebot3.py, prompt.py 로직 수정
+- turtlebot3.py : face_detection tool 추가
+- prompt.py : deviance 관련 추가
+
+### error
+- 최초 실행 시 문제 발생
+- 방향을 잡지 못하고 이동 (turtlebot3.find_detection)

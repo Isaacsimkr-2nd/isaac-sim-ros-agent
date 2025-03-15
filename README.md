@@ -11,6 +11,10 @@ llm으로 turtlebot 제어하기
 agent로 turtlebot 제어하기 
 
 
+### ROS2 YOLOv11 Integration
+- `ros2 run yolov11_ros yolov11_ros_viewer` : viewer
+- `ros2 run yolov11_ros yolov11_msg_publisher` : detection msg publisher
+
 ## agent 체험하기 
 
 yolo_agent.ipynb 
