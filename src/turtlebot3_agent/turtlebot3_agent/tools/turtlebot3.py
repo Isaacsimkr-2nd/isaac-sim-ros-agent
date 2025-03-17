@@ -2,6 +2,7 @@
 import threading
 import rclpy
 from rclpy.node import Node
+
 from geometry_msgs.msg import Twist
 from langchain.agents import tool
 from ultralytics import YOLO
@@ -255,9 +256,8 @@ def find_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
 @tool
 def face_detection(velocity: float, angle: float, duration: float = 1.0) -> str:
     """
-    [툴 함수] turtlebot3의 /cmd_vel 토픽에 Twist 메시지를 발행하여 움직입니다. 
-    객체를 마주보기 위하여 turtlebot3는 제자리 회전합니다. 
-    rotate_in_place를 사용하여 각속도 angle을 설정합니다.
+    [툴 함수] 
+    객체를 마주보기 위하여 이동합니다.. 
     객체의 정면을 마주보기 위하여 사용됩니다.
     deviance 의 값을 기준으로 양수이면 angle의 값은 -30 degrees, deviance 의 값이 음수이면 cmd_vel의 +30 degrees 입니다.
     """

@@ -39,3 +39,7 @@
 ### error
 - 최초 실행 시 문제 발생
 - 방향을 잡지 못하고 이동 (turtlebot3.find_detection)
+
+### TO-DO
+1. Service Client
+2. launch 파일로 수정 후 argument로 img 변경 가능하게

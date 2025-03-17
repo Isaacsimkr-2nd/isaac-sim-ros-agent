@@ -13,7 +13,7 @@ class YoloPerceptionNode(Node):
         # 이미지 토픽 (/rgb) 구독 설정
         self.subscription = self.create_subscription(
             Image,
-            '/rgb_left',
+            '/rgb',
             self.image_callback,
             10
         )
